@@ -40,7 +40,7 @@ export default function ResultsScreen() {
 
   const handleDone = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.replace('/(main)/home');
+    router.replace('/(main)/scan');
   };
 
   const getCompliment = (score: number): string => {

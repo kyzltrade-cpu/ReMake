@@ -49,7 +49,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         const savedPhoto = await storage.getItem(PROFILE_PHOTO_KEY);
         if (savedPhoto) {
           setProfilePhotoState(savedPhoto);
-          console.log('[Settings] Loaded profile photo from storage');
         }
       } catch (e) {
         console.error('[Settings] Failed to load:', e);
@@ -76,19 +75,15 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }, [settings, updateSettings]);
 
   const setProfilePhoto = useCallback(async (uri: string | null) => {
-    console.log('[Settings] setProfilePhoto called with:', uri ? `${uri.substring(0, 50)}...` : 'null');
     try {
       if (uri) {
         // Save to AsyncStorage - blob URIs are too long for SecureStore's 2048-byte limit
         // The URI is just a temp file path, not sensitive data
         await storage.setItem(PROFILE_PHOTO_KEY, uri);
-        console.log('[Settings] Profile photo saved to storage');
       } else {
         await storage.removeItem(PROFILE_PHOTO_KEY);
-        console.log('[Settings] Profile photo removed from storage');
       }
       setProfilePhotoState(uri);
-      console.log('[Settings] State updated successfully');
     } catch (e) {
       console.error('[Settings] Failed to save profile photo:', e);
     }

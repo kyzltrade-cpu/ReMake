@@ -4,6 +4,8 @@ import { View, Alert } from 'react-native';
 import { LoadingScreen } from '@/components/loading-screen';
 import { analyzeImage, getCoaching } from '@/lib/api';
 import type { DiagnosisResult, CoachingResult } from '@/lib/api/types';
+import { useAuth } from '@/contexts/AuthContext';
+import { createClient } from '@/lib/supabase';
 
 /**
  * Validates that the URI comes from the local ImagePicker (file:// protocol).
@@ -38,6 +40,7 @@ function validateImageUri(uri: string | undefined): string | null {
 export default function LoadingPage() {
   const router = useRouter();
   const params = useLocalSearchParams<{ uri?: string }>();
+  const { user } = useAuth();
 
   useEffect(() => {
     const runAnalysis = async () => {
@@ -50,6 +53,25 @@ export default function LoadingPage() {
       try {
         const diagnosisResult = await analyzeImage({ imageUri: validUri });
         const coachingResult = await getCoaching({ diagnosis: diagnosisResult });
+
+        // Persist to DB without blocking navigation — scan result display is primary
+        if (user) {
+          const supabase = createClient();
+          const getCategoryScore = (name: string) =>
+            diagnosisResult.categories.find(c => c.name.toLowerCase().startsWith(name.toLowerCase()))?.score ?? 0;
+          supabase.from('scans').insert({
+            user_id: user.id,
+            image_uri: validUri,
+            overall_score: diagnosisResult.overallScore,
+            complexion_score: getCategoryScore('complexion'),
+            eyes_score: getCategoryScore('eyes'),
+            lips_score: getCategoryScore('lips'),
+            sculpt_glow_score: getCategoryScore('sculpt'),
+            suggestions: JSON.stringify(coachingResult.suggestions),
+          }).then(({ error }) => {
+            if (error) console.error('[Loading] Failed to persist scan:', error);
+          });
+        }
 
         router.replace({
           pathname: '/(main)/scan/results',
@@ -68,7 +90,7 @@ export default function LoadingPage() {
     };
 
     runAnalysis();
-  }, [params.uri]);
+  }, [params.uri, user]);
 
   return (
     <View style={{ flex: 1, backgroundColor: '#f5f0eb' }}>

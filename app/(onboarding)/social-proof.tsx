@@ -3,7 +3,6 @@ import { View, Text, StyleSheet } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { tokens } from '@/components/theme';
 import { GlassButton } from '@/components/glass-button';
-import { OnboardingPagination } from '@/components/onboarding-pagination';
 import * as Haptics from 'expo-haptics';
 
 const TESTIMONIALS = [
@@ -28,8 +27,7 @@ export default function SocialProofScreen() {
         ))}
       </View>
       <Animated.View entering={FadeInUp.delay(550).duration(600)} style={styles.bottom}>
-        <GlassButton title="Next" onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(onboarding)/pricing'); }} variant="primary" style={styles.cta} />
-        <OnboardingPagination total={10} current={3} />
+        <GlassButton title="Next" onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.replace('/(main)/home'); }} variant="primary" style={styles.cta} />
       </Animated.View>
     </View>
   );

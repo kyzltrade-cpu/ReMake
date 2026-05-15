@@ -1,8 +1,10 @@
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Image, Alert } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { tokens } from '@/components/theme';
 import * as Haptics from 'expo-haptics';
+import * as MediaLibrary from 'expo-media-library';
+import * as FileSystem from 'expo-file-system';
 import { useSettings } from '@/contexts/settings-context';
 
 export default function PreviewScreen() {
@@ -19,6 +21,33 @@ export default function PreviewScreen() {
   const handleDiscard = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.back();
+  };
+
+  const handleSave = async () => {
+    if (settings.hapticsEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please allow access to your photo library to save images.');
+        return;
+      }
+
+      const cacheDir = (FileSystem as unknown as { cacheDirectory: string }).cacheDirectory;
+      const filename = `remake_${Date.now()}.jpg`;
+      const tempUri = `${cacheDir}${filename}`;
+
+      await FileSystem.copyAsync({ from: uri, to: tempUri });
+      await MediaLibrary.createAssetAsync(tempUri);
+
+      // Clean up temp file
+      await FileSystem.deleteAsync(tempUri, { idempotent: true });
+
+      Alert.alert('Saved', 'Photo saved to your library.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not save photo';
+      Alert.alert('Error', message);
+    }
   };
 
   return (
@@ -48,7 +77,7 @@ export default function PreviewScreen() {
         </Pressable>
 
         {/* Save — circle with ↓ */}
-        <Pressable style={({ pressed }) => [styles.circleBtn, pressed && styles.circleBtnPressed]}>
+        <Pressable onPress={handleSave} style={({ pressed }) => [styles.circleBtn, pressed && styles.circleBtnPressed]}>
           <Text style={styles.circleBtnIcon}>↓</Text>
         </Pressable>
       </View>
@@ -65,7 +94,7 @@ const styles = StyleSheet.create({
   circleBtn: { width: 48, height: 48, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
   circleBtnPressed: { transform: [{ scale: 0.90 }], backgroundColor: 'rgba(255,255,255,0.08)' },
   circleBtnIcon: { fontSize: 15, color: 'rgba(255,255,255,0.6)' },
-  analyzeBtn: { paddingHorizontal: 40, paddingVertical: 15, backgroundColor: tokens.colors.white, borderRadius: 50 },
+  analyzeBtn: { paddingHorizontal: 40, paddingVertical: 15, backgroundColor: tokens.colors.white, borderRadius: 50, borderWidth: 1.5, borderColor: tokens.colors.gold },
   analyzeBtnPressed: { backgroundColor: tokens.colors.cream, transform: [{ scale: 0.97 }] },
   analyzeText: { fontFamily: tokens.fonts.regular, fontSize: 12, fontWeight: '600', letterSpacing: 0.1, textTransform: 'uppercase', color: tokens.colors.gold },
 });

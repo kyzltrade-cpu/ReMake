@@ -35,8 +35,21 @@ export default function ScanScreen() {
   const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
   const [flash, setFlash] = useState(false);
+  const [facing, setFacing] = useState<'front' | 'back'>('front');
+  const lastTap = useRef<number>(0);
   const cameraRef = useRef<CameraView>(null);
   const { settings } = useSettings();
+
+  const flipCamera = () => {
+    if (settings.hapticsEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setFacing(f => f === 'front' ? 'back' : 'front');
+  };
+
+  const handleDoubleTap = () => {
+    const now = Date.now();
+    if (now - lastTap.current < 300) flipCamera();
+    lastTap.current = now;
+  };
 
   useEffect(() => {
     if (permission === null) requestPermission();
@@ -89,15 +102,15 @@ export default function ScanScreen() {
       <CameraView
         ref={cameraRef}
         style={styles.camera}
-        facing="front"
+        facing={facing}
         mode="picture"
       />
 
       {/* Face guide */}
-      <View style={styles.viewfinder}>
+      <Pressable onPress={handleDoubleTap} style={styles.viewfinder}>
         <FaceCorners size={200} />
         <Text style={styles.hint}>Align your face</Text>
-      </View>
+      </Pressable>
 
       {/* PFP button — top left */}
       <Animated.View entering={FadeIn.delay(200)} style={[styles.topBar, { paddingTop: insets.top + 14 }]}>

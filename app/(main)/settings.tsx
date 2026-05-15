@@ -1,26 +1,15 @@
 import { useRouter } from 'expo-router';
-import { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert, Image } from 'react-native';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable, Image } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { tokens } from '@/components/theme';
 import { useSettings } from '@/contexts/settings-context';
-import { useUser } from '@/contexts/user-context';
 import { useSubscription } from '@/contexts/subscription-context';
-
-function SettingRow({ label, sublabel, children }: { label: string; sublabel?: string; children: React.ReactNode }) {
-  return (
-    <View style={styles.row}>
-      <View style={styles.rowLeft}>
-        <Text style={styles.rowLabel}>{label}</Text>
-        {sublabel && <Text style={styles.rowSublabel}>{sublabel}</Text>}
-      </View>
-      {children}
-    </View>
-  );
-}
+import { SettingsIcon } from '@/components/ui/icons/settings';
+import { CrownIcon } from '@/components/ui/icons/crown';
+import { XIcon } from '@/components/ui/icons/x';
 
 function Toggle({ value, onValueChange, disabled }: {
   value: boolean;
@@ -41,57 +30,9 @@ function Toggle({ value, onValueChange, disabled }: {
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { settings, profilePhoto, updateSettings, toggleSetting, setProfilePhoto } = useSettings();
-  const { user, logout, isLoggedIn } = useUser();
+  const { settings, updateSettings, toggleSetting } = useSettings();
   const { subscription } = useSubscription();
   const [pickingRef, setPickingRef] = useState(false);
-  const [pickingPfp, setPickingPfp] = useState(false);
-  // Ref to avoid stale closure in alert callbacks
-  const profilePhotoRef = useRef(profilePhoto);
-  useEffect(() => { profilePhotoRef.current = profilePhoto; }, [profilePhoto]);
-
-  const pickProfilePhoto = async () => {
-    if (pickingPfp) return;
-    setPickingPfp(true);
-    if (settings.hapticsEnabled) Haptics.selectionAsync();
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        quality: 0.6,
-        allowsEditing: true,
-        aspect: [1, 1],
-      });
-      if (!result.canceled && result.assets[0]?.uri) {
-        setProfilePhoto(result.assets[0].uri);
-      }
-    } finally {
-      setPickingPfp(false);
-    }
-  };
-
-  const showPfpOptions = () => {
-    const hasPhoto = !!profilePhotoRef.current;
-    const options: { text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }[] = [];
-    if (hasPhoto) options.push({ text: 'Remove Photo', style: 'destructive', onPress: () => { if (settings.hapticsEnabled) Haptics.selectionAsync(); setProfilePhoto(null); } });
-    options.push({ text: 'Choose Photo', onPress: pickProfilePhoto });
-    options.push({ text: 'Cancel', style: 'cancel' });
-    Alert.alert('Profile Photo', undefined, options);
-  };
-
-  const handleSignOut = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure? You can sign back in anytime.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: logout,
-        },
-      ]
-    );
-  };
 
   const pickReference = async () => {
     if (pickingRef) return;
@@ -117,413 +58,458 @@ export default function SettingsScreen() {
     updateSettings({ referencePhoto: null });
   };
 
+  const isPro = subscription?.status === 'active';
+
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.exitBtn}>
-          <Text style={styles.exitBtnText}>✕</Text>
-        </Pressable>
-        <Text style={styles.headerTitle}>Settings</Text>
-        <View style={styles.exitBtn} />
-      </View>
-
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* User section */}
-        <Animated.View entering={FadeInUp.delay(50).duration(400)}>
-          <View style={styles.section}>
-            <Text style={styles.sectionHeader}>Account</Text>
-            <View style={styles.card}>
-              <View style={styles.pfpCentered}>
-                <Pressable onPress={showPfpOptions} style={styles.avatarWrapLarge}>
-                  {profilePhoto ? (
-                    <Image source={{ uri: profilePhoto }} style={styles.avatarPhotoLarge} />
-                  ) : (
-                    <View style={styles.avatarLarge}>
-                      <MaterialIcons name="person" size={48} color={tokens.colors.grayLight} />
-                    </View>
-                  )}
-                  <View style={styles.pfpEditBadgeLarge}>
-                    <Text style={styles.pfpEditIcon}>✎</Text>
-                  </View>
-                </Pressable>
-                {isLoggedIn ? (
-                  <Text style={styles.userEmail}>{user?.email || 'your@email.com'}</Text>
-                ) : (
-                  <Pressable onPress={() => router.push('/(onboarding)/create-account')}>
-                    <Text style={styles.signInLink}>Sign in to save your data</Text>
-                  </Pressable>
-                )}
+        {/* Back button */}
+        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
+          <XIcon size={18} color={tokens.colors.text} />
+        </Pressable>
+
+        {/* Page title */}
+        <Animated.View entering={FadeInUp.delay(60).duration(500)}>
+          <Text style={styles.pageTitle}>Settings</Text>
+          <Text style={styles.pageSubtitle}>Personalize your experience</Text>
+        </Animated.View>
+
+        {/* Plan Banner */}
+        <Animated.View entering={FadeInUp.delay(120).duration(500)}>
+          {isPro ? (
+            <View style={styles.planBannerPro}>
+              <View style={styles.planBannerLeft}>
+                <View style={styles.planBadge}>
+                  <CrownIcon size={14} color={tokens.colors.gold} />
+                </View>
+                <View>
+                  <Text style={styles.planTitle}>Pro Member</Text>
+                  <Text style={styles.planDesc}>Unlimited scans unlocked</Text>
+                </View>
+              </View>
+              <View style={styles.planCheck}>
+                <Text style={styles.planCheckMark}>✓</Text>
               </View>
             </View>
-          </View>
+          ) : (
+            <Pressable
+              style={styles.planBanner}
+              onPress={() => {
+                if (settings.hapticsEnabled) Haptics.selectionAsync();
+                router.push('/(main)/pricing');
+              }}
+            >
+              <View style={styles.planBannerLeft}>
+                <View style={styles.planBadge}>
+                  <CrownIcon size={14} color={tokens.colors.gold} />
+                </View>
+                <View>
+                  <Text style={styles.planBannerTitle}>Upgrade to Pro</Text>
+                  <Text style={styles.planBannerDesc}>Unlimited scans, insights & more</Text>
+                </View>
+              </View>
+              <Text style={styles.planArrow}>→</Text>
+            </Pressable>
+          )}
         </Animated.View>
 
-        {/* Preferences */}
-        <Animated.View entering={FadeInUp.delay(120).duration(400)}>
-          <View style={styles.section}>
-            <Text style={styles.sectionHeader}>Preferences</Text>
-            <View style={styles.card}>
-              <SettingRow label="Haptic feedback" sublabel="Vibration on interactions">
-                <Toggle
-                  value={settings.hapticsEnabled}
-                  onValueChange={() => toggleSetting('hapticsEnabled')}
-                />
-              </SettingRow>
+        {/* Preferences Section */}
+        <Animated.View entering={FadeInUp.delay(180).duration(500)} style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionLabel}>Preferences</Text>
+          </View>
 
-              <View style={styles.divider} />
-
-              <SettingRow label="Mirror photos" sublabel="Front camera flip">
-                <Toggle
-                  value={settings.mirrorPhotos}
-                  onValueChange={() => toggleSetting('mirrorPhotos')}
-                />
-              </SettingRow>
+          <Pressable
+            style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+            onPress={() => toggleSetting('hapticsEnabled')}
+          >
+            <View style={styles.rowLeft}>
+              <View style={[styles.rowIcon, { backgroundColor: tokens.colors.pinkLight }]}>
+                <SettingsIcon size={14} color={tokens.colors.pinkRich} />
+              </View>
+              <View>
+                <Text style={styles.rowLabel}>Haptic feedback</Text>
+                <Text style={styles.rowDesc}>Subtle vibration on interactions</Text>
+              </View>
             </View>
-          </View>
+            <Toggle
+              value={settings.hapticsEnabled}
+              onValueChange={() => toggleSetting('hapticsEnabled')}
+            />
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [styles.row, styles.rowLast, pressed && styles.rowPressed]}
+            onPress={() => toggleSetting('mirrorPhotos')}
+          >
+            <View style={styles.rowLeft}>
+              <View style={[styles.rowIcon, { backgroundColor: tokens.colors.blush }]}>
+                <Text style={styles.rowIconText}>↔</Text>
+              </View>
+              <View>
+                <Text style={styles.rowLabel}>Mirror photos</Text>
+                <Text style={styles.rowDesc}>Flip front camera horizontally</Text>
+              </View>
+            </View>
+            <Toggle
+              value={settings.mirrorPhotos}
+              onValueChange={() => toggleSetting('mirrorPhotos')}
+            />
+          </Pressable>
         </Animated.View>
 
-        {/* Reference photo */}
-        <Animated.View entering={FadeInUp.delay(190).duration(400)}>
-          <View style={styles.section}>
-            <Text style={styles.sectionHeader}>Reference Photo</Text>
-            <View style={styles.card}>
-              {settings.referencePhoto ? (
+        {/* Notifications Section */}
+        <Animated.View entering={FadeInUp.delay(240).duration(500)} style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionLabel}>Notifications</Text>
+          </View>
+
+          <Pressable
+            style={({ pressed }) => [styles.row, styles.rowLast, pressed && styles.rowPressed]}
+            onPress={() => toggleSetting('notificationsEnabled')}
+          >
+            <View style={styles.rowLeft}>
+              <View style={[styles.rowIcon, { backgroundColor: tokens.colors.beige }]}>
+                <Text style={styles.rowIconText}>🔔</Text>
+              </View>
+              <View>
+                <Text style={styles.rowLabel}>Push notifications</Text>
+                <Text style={styles.rowDesc}>Scan results, tips & reminders</Text>
+              </View>
+            </View>
+            <Toggle
+              value={settings.notificationsEnabled}
+              onValueChange={() => toggleSetting('notificationsEnabled')}
+            />
+          </Pressable>
+        </Animated.View>
+
+        {/* Reference Photo Section */}
+        <Animated.View entering={FadeInUp.delay(340).duration(500)} style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionLabel}>Reference Photo</Text>
+          </View>
+
+          <View style={styles.refCard}>
+            {settings.referencePhoto ? (
+              <>
                 <Pressable onPress={pickReference}>
                   <Image source={{ uri: settings.referencePhoto }} style={styles.refPhoto} />
-                  <Text style={styles.refHint}>Tap to change</Text>
+                  <View style={styles.refOverlay}>
+                    <Text style={styles.refOverlayText}>Change photo</Text>
+                  </View>
                 </Pressable>
-              ) : (
-                <Pressable style={styles.refPlaceholder} onPress={pickReference}>
-                  <Text style={styles.refPlaceholderIcon}>⊕</Text>
-                  <Text style={styles.refPlaceholderText}>Add reference photo</Text>
+                <Pressable style={styles.removeRef} onPress={clearReference}>
+                  <Text style={styles.removeRefText}>Remove reference photo</Text>
                 </Pressable>
-              )}
-              {settings.referencePhoto && (
-                <Pressable style={styles.clearBtn} onPress={clearReference}>
-                  <Text style={styles.clearBtnText}>Remove</Text>
-                </Pressable>
-              )}
-            </View>
-          </View>
-        </Animated.View>
-
-        {/* Notifications */}
-        <Animated.View entering={FadeInUp.delay(260).duration(400)}>
-          <View style={styles.section}>
-            <Text style={styles.sectionHeader}>Notifications</Text>
-            <View style={styles.card}>
-              <SettingRow label="Push notifications" sublabel="Scan results & tips">
-                <Toggle
-                  value={settings.notificationsEnabled}
-                  onValueChange={() => toggleSetting('notificationsEnabled')}
-                />
-              </SettingRow>
-            </View>
-          </View>
-        </Animated.View>
-
-        {/* Subscription */}
-        <Animated.View entering={FadeInUp.delay(330).duration(400)}>
-          <View style={styles.section}>
-            <Text style={styles.sectionHeader}>Subscription</Text>
-            <View style={styles.card}>
-              <SettingRow
-                label="Plan"
-                sublabel={subscription?.plan === 'pro' ? 'Pro plan' : 'Free plan'}
-              >
-                <Text style={[styles.rowValue, subscription?.plan === 'pro' && styles.proText]}>
-                  {subscription?.plan === 'pro' ? '✦ Pro' : 'Free'}
-                </Text>
-              </SettingRow>
-            </View>
-
-            {subscription?.plan !== 'pro' && (
-              <Pressable
-                style={styles.upgradePill}
-                onPress={() => {
-                  if (settings.hapticsEnabled) Haptics.selectionAsync();
-                  router.push('/(onboarding)/pricing');
-                }}
-              >
-                <Text style={styles.upgradePillText}>Upgrade to Pro</Text>
+              </>
+            ) : (
+              <Pressable style={styles.refEmpty} onPress={pickReference}>
+                <View style={styles.refEmptyIcon}>
+                  <Text style={styles.refEmptyIconText}>+</Text>
+                </View>
+                <Text style={styles.refEmptyTitle}>Add your reference photo</Text>
+                <Text style={styles.refEmptyDesc}>This helps calibrate your analysis</Text>
               </Pressable>
             )}
-
-            <View style={styles.divider} />
-
-            <SettingRow label="Version">
-              <Text style={styles.rowValue}>1.0.0</Text>
-            </SettingRow>
           </View>
         </Animated.View>
 
-        {/* Sign out */}
-        {isLoggedIn && (
-          <Animated.View entering={FadeInUp.delay(400).duration(400)} style={styles.section}>
-            <Pressable style={styles.signOutBtn} onPress={handleSignOut}>
-              <Text style={styles.signOutText}>Sign Out</Text>
-            </Pressable>
-          </Animated.View>
-        )}
+        {/* App info */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Remake v1.0.0</Text>
+          <Text style={styles.footerSubtext}>Made with ✦ in San Francisco</Text>
+        </View>
 
-        <View style={{ height: 60 }} />
+        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: tokens.colors.beige },
-  header: {
+  container: { flex: 1, backgroundColor: tokens.colors.ivory },
+  scroll: { flex: 1 },
+  scrollContent: { paddingHorizontal: 24, paddingTop: 68 },
+
+  // Header
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: tokens.colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    shadowColor: tokens.colors.text,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  pageTitle: {
+    fontFamily: tokens.fonts.serif,
+    fontSize: 32,
+    color: tokens.colors.text,
+    letterSpacing: -0.5,
+    lineHeight: 38,
+  },
+  pageSubtitle: {
+    fontFamily: tokens.fonts.regular,
+    fontSize: 14,
+    color: tokens.colors.gray,
+    marginTop: 4,
+    marginBottom: 28,
+  },
+
+  // Plan banner
+  planBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
+    backgroundColor: tokens.colors.ivory,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: tokens.colors.gold,
+    borderStyle: 'dashed',
+    padding: 16,
+    marginBottom: 32,
   },
-  exitBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
-  exitBtnText: { fontSize: 18, color: tokens.colors.gray, marginTop: -1 },
-  headerTitle: {
-    fontFamily: tokens.fonts.regular,
+  planBannerPro: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: tokens.colors.cream,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: tokens.colors.gold + '50',
+    padding: 16,
+    marginBottom: 32,
+  },
+  planBannerLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  planBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: tokens.colors.gold + '18',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  planTitle: {
+    fontFamily: tokens.fonts.serif,
     fontSize: 15,
-    fontWeight: '600',
-    color: tokens.colors.text,
-    letterSpacing: 0.02,
+    color: tokens.colors.gold,
   },
-  scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 8 },
-  section: { marginBottom: 24 },
-  sectionHeader: {
+  planDesc: {
     fontFamily: tokens.fonts.regular,
-    fontSize: 11,
+    fontSize: 12,
+    color: tokens.colors.gray,
+    marginTop: 1,
+  },
+  planBannerTitle: {
+    fontFamily: tokens.fonts.serif,
+    fontSize: 15,
+    color: tokens.colors.text,
+  },
+  planBannerDesc: {
+    fontFamily: tokens.fonts.regular,
+    fontSize: 12,
+    color: tokens.colors.gray,
+    marginTop: 1,
+  },
+  planArrow: {
+    fontFamily: tokens.fonts.regular,
+    fontSize: 16,
+    color: tokens.colors.gold,
     fontWeight: '600',
-    letterSpacing: 0.12,
+  },
+  planCheck: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: tokens.colors.gold,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  planCheckMark: {
+    fontFamily: tokens.fonts.regular,
+    fontSize: 12,
+    color: tokens.colors.white,
+    fontWeight: '700',
+  },
+
+  // Section
+  section: { marginBottom: 28 },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingLeft: 4,
+  },
+  sectionLabel: {
+    fontFamily: tokens.fonts.regular,
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 1.5,
     textTransform: 'uppercase',
     color: tokens.colors.gray,
-    marginBottom: 10,
-    marginLeft: 4,
   },
-  card: {
-    backgroundColor: tokens.colors.white,
-    borderRadius: 18,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: tokens.colors.border,
-  },
+
+  // Row
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 16,
-    paddingHorizontal: 18,
-    minHeight: 58,
+    backgroundColor: tokens.colors.white,
+    paddingLeft: 14,
+    paddingRight: 16,
+    paddingVertical: 14,
+    borderRadius: 14,
   },
-  rowLeft: { flex: 1, paddingRight: 12 },
+  rowPressed: { opacity: 0.7 },
+  rowLast: { marginTop: 2 },
+  rowLeft: { flexDirection: 'row', alignItems: 'center', gap: 14, flex: 1 },
+  rowIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  rowIconText: {
+    fontSize: 14,
+    color: tokens.colors.pinkRich,
+  },
   rowLabel: {
     fontFamily: tokens.fonts.regular,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '500',
     color: tokens.colors.text,
   },
-  rowSublabel: {
+  rowDesc: {
     fontFamily: tokens.fonts.regular,
-    fontSize: 12,
+    fontSize: 11.5,
     color: tokens.colors.gray,
-    marginTop: 2,
+    marginTop: 1,
   },
-  rowValue: {
-    fontFamily: tokens.fonts.regular,
-    fontSize: 14,
-    color: tokens.colors.gray,
-  },
-  divider: { height: 1, backgroundColor: tokens.colors.border, marginLeft: 18 },
 
   // Toggle
   toggle: {
-    width: 48,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#e0dbd5',
+    width: 44,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: tokens.colors.grayLight,
     padding: 2,
     justifyContent: 'center',
   },
-  toggleOn: { backgroundColor: tokens.colors.pink },
+  toggleOn: { backgroundColor: tokens.colors.pinkRich },
   toggleDisabled: { opacity: 0.4 },
   toggleThumb: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: tokens.colors.white,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.1,
     shadowRadius: 2,
   },
   toggleThumbOn: { alignSelf: 'flex-end' },
 
-  // User
-  userRow: { flexDirection: 'row', alignItems: 'center', padding: 18, gap: 14 },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: tokens.colors.text,
-    justifyContent: 'center',
-    alignItems: 'center',
+  // Reference photo
+  refCard: {
+    backgroundColor: tokens.colors.white,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: tokens.colors.border,
   },
-  avatarText: {
-    fontFamily: tokens.fonts.regular,
-    fontSize: 16,
-    fontWeight: '600',
-    color: tokens.colors.white,
+  refPhoto: {
+    width: '100%',
+    height: 200,
+    borderTopLeftRadius: 15,
+    borderTopRightRadius: 15,
   },
-  avatarWrap: { position: 'relative' },
-  avatarPhoto: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-  },
-  pfpEditBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -4,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: tokens.colors.pink,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: tokens.colors.white,
-  },
-  // User - stacked
-  pfpCentered: {
-    alignItems: 'center',
-    padding: 24,
-    gap: 12,
-  },
-  avatarWrapLarge: { position: 'relative' },
-  avatarLarge: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: tokens.colors.text,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarTextLarge: {
-    fontFamily: tokens.fonts.regular,
-    fontSize: 28,
-    fontWeight: '600',
-    color: tokens.colors.white,
-  },
-  avatarPhotoLarge: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-  },
-  pfpEditBadgeLarge: {
+  refOverlay: {
     position: 'absolute',
     bottom: 0,
-    right: -4,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: tokens.colors.pink,
+    left: 0,
+    right: 0,
+    height: 44,
+    backgroundColor: 'rgba(0,0,0,0.38)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
-    borderColor: tokens.colors.white,
   },
-  pfpEditIcon: {
+  refOverlayText: {
+    fontFamily: tokens.fonts.regular,
     fontSize: 13,
     color: tokens.colors.white,
-    fontWeight: '700',
-  },
-  userEmail: {
-    fontFamily: tokens.fonts.regular,
-    fontSize: 14,
-    color: tokens.colors.gray,
-  },
-  proText: {
-    color: tokens.colors.pink,
-    fontWeight: '600',
-  },
-  signInLink: {
-    fontFamily: tokens.fonts.regular,
-    fontSize: 14,
-    color: tokens.colors.pink,
-    textDecorationLine: 'underline',
-  },
-
-  // Upgrade
-  upgradePill: {
-    marginTop: 16,
-    marginHorizontal: 1,
-    paddingVertical: 14,
-    borderRadius: 50,
-    borderWidth: 1,
-    borderColor: tokens.colors.goldSoft,
-    alignItems: 'center',
-    backgroundColor: tokens.colors.white,
-    shadowColor: '#D4AF37',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-  },
-  upgradePillText: {
-    fontFamily: tokens.fonts.regular,
-    fontSize: 12,
     fontWeight: '500',
-    letterSpacing: 0.1,
-    textTransform: 'uppercase',
-    color: tokens.colors.gold,
+  },
+  removeRef: {
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: tokens.colors.border,
+  },
+  removeRefText: {
+    fontFamily: tokens.fonts.regular,
+    fontSize: 13,
+    color: tokens.colors.pinkRich,
+    fontWeight: '500',
   },
 
-  // Reference photo
-  refPhoto: { width: '100%', height: 200, borderRadius: 12, margin: 16 },
-  refHint: {
-    fontFamily: tokens.fonts.regular,
-    fontSize: 12,
-    color: tokens.colors.gray,
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  refPlaceholder: {
+  // Ref empty state
+  refEmpty: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 36,
-    gap: 10,
+    gap: 8,
   },
-  refPlaceholderIcon: { fontSize: 28, color: tokens.colors.gray },
-  refPlaceholderText: {
+  refEmptyIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: tokens.colors.pinkLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  refEmptyIconText: {
+    fontFamily: tokens.fonts.regular,
+    fontSize: 24,
+    color: tokens.colors.pinkRich,
+    fontWeight: '300',
+    marginTop: -2,
+  },
+  refEmptyTitle: {
     fontFamily: tokens.fonts.regular,
     fontSize: 14,
-    color: tokens.colors.gray,
-  },
-  clearBtn: { paddingVertical: 14, alignItems: 'center' },
-  clearBtnText: {
-    fontFamily: tokens.fonts.regular,
-    fontSize: 14,
-    color: '#e74c3c',
+    color: tokens.colors.text,
     fontWeight: '500',
   },
-
-  // Sign out
-  signOutBtn: {
-    backgroundColor: tokens.colors.white,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#e74c3c',
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  signOutText: {
+  refEmptyDesc: {
     fontFamily: tokens.fonts.regular,
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#e74c3c',
+    fontSize: 12,
+    color: tokens.colors.gray,
+  },
+
+  // Footer
+  footer: {
+    alignItems: 'center',
+    paddingTop: 28,
+    paddingBottom: 8,
+  },
+  footerText: {
+    fontFamily: tokens.fonts.regular,
+    fontSize: 12,
+    color: tokens.colors.gray,
+    letterSpacing: 0.3,
+  },
+  footerSubtext: {
+    fontFamily: tokens.fonts.regular,
+    fontSize: 11,
+    color: tokens.colors.grayLight,
+    marginTop: 4,
   },
 });
